@@ -4,5 +4,4 @@ const errorHandler = (err, req, res, next) => {
         status: 'error',
         message: err.message || 'An unexpected error occurred!' });
 };
-
 export default errorHandler;
