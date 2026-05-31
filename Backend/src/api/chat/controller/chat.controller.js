@@ -1,4 +1,5 @@
-import { createConversationService } from "../service/chat.service.js";
+import { createConversationService,getRecentConversations } from "../service/chat.service.js";
+
 export async function createChatController(req, res) {
   try {
     const { question } = req.body;
@@ -9,5 +10,16 @@ export async function createChatController(req, res) {
   }
 }
 export async function getChatController(req, res) {
-  res.send("This is a response from the get chat controller!");
+try {
+
+  const result=await getRecentConversations(100);
+  res.status(200).json({
+    success: true,
+    message: "Conversations retrieved successfully",
+    data: result
+  })
+
+} catch (error) {
+  throw error;
+}
 }
