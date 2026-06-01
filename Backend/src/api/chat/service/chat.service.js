@@ -32,27 +32,30 @@ async function generateAssistantAnswer({historyRows,question}) {
     history: formattedHistory
   });
   const result = await chat.sendMessage({ message: question });
-  console.log( result.usageMetadata.totalTokenCount);
+  console.log( result.text);
 
   return {text: result.text,totalTokens: result.usageMetadata.totalTokenCount};
 }
 
 
-const getMessageById =async messageid=>{
-  const[rows]=await db.execute(
-    "SELECT id,role,content,token_count,created_at FROM conversations WHERE id=? LIMIT 1",
+const getMessageById = async (messageid) => {
+  const [rows] = await db.execute(
+    "SELECT id, role, content, token_count, created_at FROM conversations WHERE id = ? LIMIT 1",
     [messageid]
   );
-  if(!rows[0]){return null;
-return{
-  id: rows[0].id,
-  role: rows[0].role,
-  content: rows[0].content,
-  token_count: Number(rows[0].token_count||0),
-  created_at: rows[0].created_at
-}
+
+  if (!rows[0]) {
+    return null;
   }
-}
+
+  return {
+    id: rows[0].id,
+    role: rows[0].role,
+    content: rows[0].content,
+    token_count: Number(rows[0].token_count || 0),
+    created_at: rows[0].created_at,
+  };
+};
 
 export async function createConversationService(question) {
   try {
@@ -74,7 +77,7 @@ export async function createConversationService(question) {
   const {text,totalTokens} = await generateAssistantAnswer({historyRows,question});
 
   //insert assistant answer into database
-  const createAssistantMessageResult=await db.query(
+  const [createAssistantMessageResult] = await db.execute(
     "INSERT INTO conversations (role,content,token_count) VALUES (?, ?, ?)",
     ['assistant', text, totalTokens]
   );
