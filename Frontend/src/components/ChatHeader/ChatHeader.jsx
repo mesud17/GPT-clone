@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import styles from './Header.module.css';
+import styles from './ChatHeader.module.css';
 
 export default function ChatHeader() {
   return (
