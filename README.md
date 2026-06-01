@@ -4,11 +4,6 @@ A full-stack AI chat application powered by Google Gemini, built with React and 
 
 ---
 
-## Live Demo
-
-> Add your deployed URL here
-
----
 
 ## Features
 
@@ -188,8 +183,8 @@ The app will be available at `http://localhost:5173`
 ```
 
 ### Chat Interface
-![Chat-1](Frontend/public/screen-shots/screen-shot-sample1.png)
-![Chat-2](Frontend/public/screen-shots/screen-shot-sample2.png)
+![landing-page](Frontend/public/screen-shots/screen-shot-sample1.png.png)
+![chat](Frontend/public/screen-shots/screen-shot-sample2.png.png)
 
 ---
 
