@@ -13,7 +13,7 @@ import ChatInput from './components/ChatInput/ChatInput';
 import './App.css';
 
 /** Base URL for all backend API requests */
-const API_BASE_URL = 'http://localhost:3777/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
   const [conversations, setConversations] = useState([]);
