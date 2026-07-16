@@ -7,15 +7,21 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 export async function getRecentConversations(sessionId, limit = 5) {
-  const [rows] = await db.execute(
+  limit = Number(limit);
+
+  if (!Number.isInteger(limit) || limit <= 0) {
+    throw new Error("Limit must be a positive integer.");
+  }
+
+  const [rows] = await db.query(
     `
     SELECT content, role
     FROM GPT_clone
     WHERE session_id = ?
     ORDER BY created_at DESC
-    LIMIT ?
+    LIMIT ${limit}
     `,
-    [sessionId, Number(limit)]
+    [sessionId]
   );
 
   return rows.reverse();
