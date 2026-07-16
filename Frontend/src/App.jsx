@@ -6,6 +6,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
+
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatHeader from './components/ChatHeader/ChatHeader';
 import MessageList from './components/MessageList/MessageList';
@@ -19,6 +21,15 @@ function App() {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Create or retrieve a unique session ID for this browser
+  const sessionId = useRef(
+    localStorage.getItem('session_id') || uuidv4()
+  );
+
+  useEffect(() => {
+    localStorage.setItem('session_id', sessionId.current);
+  }, []);
 
   /** Scrolls the chat to the latest message */
   const scrollToBottom = () => {
@@ -36,7 +47,12 @@ function App() {
   /** Fetches existing conversations from the backend on mount */
   const fetchConversations = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/chat/conversations`);
+      const response = await axios.get(`${API_BASE_URL}/chat/conversations`, {
+        params: {
+          sessionId: sessionId.current,
+        },
+      });
+
       if (response.data.success) {
         setConversations(response.data.data);
       }
@@ -51,22 +67,24 @@ function App() {
    * @param {string} question - The user's input message.
    */
   const handleSendMessage = async question => {
-    // Optimistically add user message while waiting for the response
     const tempUserMessage = {
       id: Date.now(),
       role: 'user',
       content: question,
     };
+
     setConversations(prev => [...prev, tempUserMessage]);
     setIsLoading(true);
 
     try {
       const response = await axios.post(`${API_BASE_URL}/chat/conversations`, {
         question,
+        sessionId: sessionId.current,
       });
 
-      // Replace the temporary message with the real persisted messages
-      const { userConversation, assistantConversation } = response.data.question;
+      const { userConversation, assistantConversation } =
+        response.data.question;
+
       setConversations(prev => {
         const filtered = prev.filter(msg => msg.id !== tempUserMessage.id);
         return [...filtered, userConversation, assistantConversation];
@@ -74,7 +92,6 @@ function App() {
     } catch (error) {
       console.error('Error posting conversation:', error);
 
-      // Display the backend error message or a generic fallback in the chat
       const errorMessage =
         error.response?.data?.message ||
         'There was an error generating a response.';

@@ -6,22 +6,17 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-export async function getRecentConversations(limit) {
-  limit = Number(limit);
-
-  if (!Number.isInteger(limit) || limit <= 0) {
-    const error = new Error("Limit must be a positive integer.");
-    error.status = 400;
-    throw error;
-  }
-
-  // Use query() instead of execute() because LIMIT ? can fail
-  const [rows] = await db.query(`
+export async function getRecentConversations(sessionId, limit = 5) {
+  const [rows] = await db.execute(
+    `
     SELECT content, role
     FROM GPT_clone
+    WHERE session_id = ?
     ORDER BY created_at DESC
-    LIMIT ${limit}
-  `);
+    LIMIT ?
+    `,
+    [sessionId, Number(limit)]
+  );
 
   return rows.reverse();
 }
@@ -49,71 +44,57 @@ async function generateAssistantAnswer({ historyRows, question }) {
 
 async function getMessageById(messageId) {
   const [rows] = await db.execute(
-    `SELECT
-        id,
-        role,
-        content,
-        token_count,
-        created_at
-     FROM GPT_clone
-     WHERE id = ?
-     LIMIT 1`,
+    `
+    SELECT
+      id,
+      session_id,
+      role,
+      content,
+      token_count,
+      created_at
+    FROM GPT_clone
+    WHERE id = ?
+    `,
     [messageId]
   );
 
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return {
-    id: rows[0].id,
-    role: rows[0].role,
-    content: rows[0].content,
-    token_count: Number(rows[0].token_count || 0),
-    created_at: rows[0].created_at,
-  };
+  return rows.length ? rows[0] : null;
 }
 
-export async function createConversationService(question) {
-  try {
-    if (!question?.trim()) {
-      const error = new Error(
-        "Question is required to create a conversation."
-      );
-      error.status = 400;
-      throw error;
-    }
-
-    const historyRows = await getRecentConversations(5);
-
-    const [userResult] = await db.execute(
-      `INSERT INTO GPT_clone (content, role)
-       VALUES (?, ?)`,
-      [question, "user"]
-    );
-
-    const { text, totalTokens } = await generateAssistantAnswer({
-      historyRows,
-      question,
-    });
-
-    const [assistantResult] = await db.execute(
-      `INSERT INTO GPT_clone (role, content, token_count)
-       VALUES (?, ?, ?)`,
-      ["assistant", text, totalTokens]
-    );
-
-    const userConversation = await getMessageById(userResult.insertId);
-    const assistantConversation = await getMessageById(
-      assistantResult.insertId
-    );
-
-    return {
-      userConversation,
-      assistantConversation,
-    };
-  } catch (error) {
-    console.error("Error in createConversationService:", error);
-    throw error;
+export async function createConversationService(question, sessionId) {
+  if (!question?.trim()) {
+    throw new Error("Question is required.");
   }
+
+  if (!sessionId) {
+    throw new Error("Session ID is required.");
+  }
+
+  const historyRows = await getRecentConversations(sessionId);
+
+  const [userResult] = await db.execute(
+    `
+    INSERT INTO GPT_clone (session_id, content, role)
+    VALUES (?, ?, ?)
+    `,
+    [sessionId, question, "user"]
+  );
+
+  const { text, totalTokens } = await generateAssistantAnswer({
+    historyRows,
+    question,
+  });
+
+  const [assistantResult] = await db.execute(
+    `
+    INSERT INTO GPT_clone (session_id, role, content, token_count)
+    VALUES (?, ?, ?, ?)
+    `,
+    [sessionId, "assistant", text, totalTokens]
+  );
+
+  return {
+    userConversation: await getMessageById(userResult.insertId),
+    assistantConversation: await getMessageById(assistantResult.insertId),
+  };
 }
